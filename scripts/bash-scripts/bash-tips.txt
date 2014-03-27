@@ -1,0 +1,451 @@
+=============================================================================
+BASH tips
+=============================================================================
+
+
+
+
+-----------------------------------------------------------------------------
+
+# Get exact lineno when any error happens in bash script
+
+http://stackoverflow.com/questions/13213254/how-to-get-the-original-caller-lineno-when-executing-a-function-returning-a-non
+
+# hook to exec cmds before any bash cmd is run. related to exact
+# lineno when any error happens
+
+http://superuser.com/questions/175799/does-bash-have-a-hook-that-is-run-before-executing-a-command
+
+-----------------------------------------------------------------------------
+
+# split a string in bash
+
+IP=1.2.3.4; IP=(${IP//./ }); Rev=${IP[3]}.${IP[2]}.${IP[1]}.${IP[0]}
+
+-----------------------------------------------------------------------------
+# wait for for certain line to appear in log file
+
+You can use tail -f to keep reading from the file as it grows. Be
+careful with what you feed tail -f into. You can pipe tail -f into a
+filter that waits until the desired log line and quits. What won't
+work is if you pipe tail -f into a filter that pipes into another
+filter, because the intermediate filter will buffer its output. This
+works:
+
+: >file.log  # create an empty log file
+start-selenium-session --log-file=file.log &
+{ tail -n +1 -f file.log & } | sed -n '/Started SocketListener/q'
+speak-to-socket
+
+Note that I put tail in the background. This is because when sed finds
+the desired line, it exits, but the pipeline keeps running as long as
+tail is waiting for the next line, which may not come immediately if
+at all¹. tail will exit when the next line comes and it receives a
+SIGPIPE. This may leave a stray tail process if the log is removed
+without any line being written to it (obtaining the PID of the tail
+process to kill it when sed exits would be possible but tricky).
+
+-----------------------------------------------------------------------------
+# bash trim leading/trailing ws
+
+trim() {
+    # Determine if 'extglob' is currently on.
+    local extglobWasOff=1
+    shopt extglob >/dev/null && extglobWasOff=0 
+    (( extglobWasOff )) && shopt -s extglob # Turn 'extglob' on, if currently turned off.
+    # Trim leading and trailing whitespace
+    local var=$1
+    var=${var##+([[:space:]])}
+    var=${var%%+([[:space:]])}
+    (( extglobWasOff )) && shopt -u extglob # If 'extglob' was off before, turn it back off.
+    echo -n "$var"  # Output trimmed string.
+}
+Usage:
+
+string="   abc def ghi  ";
+#need to quote input-string to preserve internal white-space if any
+trimmed=$(trim "$string");  
+echo "$trimmed";
+
+-----------------------------------------------------------------------------
+# How to get output and exit value from subshell
+
+http://superuser.com/questions/363444/how-do-i-get-the-output-and-exit-value-of-a-subshell-when-using-bash-e
+
+
+# Consider the following code outer-scope.sh
+
+#!/bin/bash
+set -e
+source inner-scope.sh
+echo $(inner)
+echo "I thought I would've died :("
+
+# inner-scope.sh
+
+#!/bin/bash
+function inner() { echo "winner"; return 1; }
+
+# $() preserves the exit status; you just have to use it in a
+  statement that has no status of its own, such as an assignment.
+
+output=$(inner)
+
+# After this, $? would contain the exit status of inner, and you can
+  use all sorts of checks for it:
+
+output=$(inner) || exit $?
+echo $output
+
+# Or:
+
+if ! output=$(inner); then
+    exit $?
+fi
+echo $output
+
+# Or:
+
+if output=$(inner); then
+    echo $output
+else
+    exit $?
+fi
+
+# (Note: A bare exit without arguments is equivalent to exit $? – that
+  is, it exits with the last command's exit status. I used the second
+  form only for clarity.)
+
+-----------------------------------------------------------------------------
+# parse command output
+http://stackoverflow.com/questions/4276924/parsing-command-output-in-bash-script
+
+# Consider code: 
+
+cmdout=`mycommand`
+while read -r line
+do
+   #check for key words in $line
+done < $cmdout
+
+# I thought this did what I wanted but it always seems to output the
+  following right before the command output:
+
+#    ./myscript.sh: 29: cannot open ... : No such file
+
+# The reason for the error is that
+
+done < $cmdout
+
+# thinks that the contents of $cmdout is a filename.
+
+# You can either do:
+
+done <<< $cmdout
+
+# or
+
+done <<EOF
+$cmdout
+EOF
+
+# or
+
+done < <(mycommand)    # without using the variable at all
+
+# or
+
+done <<< $(mycommand)
+
+# or
+
+done <<EOF
+$(mycommand)
+EOF
+
+# or
+
+mycommand | while
+...
+done
+
+# However, the last one creates a subshell and any variables set in
+  the loop will be lost when the loop exits.
+
+-----------------------------------------------------------------------------
+
+# Trap signals and run cmd on exit. Also shows how to setup an array
+#  of commands
+
+#!/bin/bash
+
+declare -a on_exit_items
+
+function on_exit()
+{
+    for i in "${on_exit_items[@]}"
+    do
+        echo "on_exit: $i"
+        eval $i
+    done
+}
+
+function add_on_exit()
+{
+    local n=${#on_exit_items[*]}
+    on_exit_items[$n]="$*"
+    if [[ $n -eq 0 ]]; then
+        echo "Setting trap"
+        trap on_exit EXIT
+    fi
+}
+
+-----------------------
+# now run to test it out
+touch $$-1.tmp
+add_on_exit rm -f $$-1.tmp
+
+touch $$-2.tmp
+add_on_exit rm -f $$-2.tmp
+
+ls -la
+
+-----------------------------------------------------------------------------
+
+
+1. Identify String Length inside Bash Shell Script
+
+${#string}
+
+The above format is used to get the length of the given bash variable.
+
+$ cat len.sh
+#! /bin/bash
+
+var="Welcome to the geekstuff"
+
+echo ${#var}
+
+$ ./len.sh
+24
+
+To understand more about bash variables, read 6 Practical Bash Global
+and Local Variable Examples.
+
+-----------------------
+2. Extract a Substring from a Variable inside Bash Shell Script
+
+Bash provides a way to extract a substring from a string. The
+following example expains how to parse n characters starting from a
+particular position.
+
+${string:position}
+
+Extract substring from $string at $position
+
+${string:position:length}
+
+Extract $length of characters substring from $string starting from
+$position. In the below example, first echo statement returns the
+substring starting from 15th position. Second echo statement returns
+the 4 characters starting from 15th position. Length must be the
+number greater than or equal to zero.
+
+$ cat substr.sh
+#! /bin/bash
+
+var="Welcome to the geekstuff"
+
+echo ${var:15}
+echo ${var:15:4}
+
+$ ./substr.sh
+geekstuff
+geek
+
+Also, refer to our earlier article to understand more about $*, $@,
+$#, $$, $!, $?, $-, $_ bash special parameters.
+
+-----------------------
+
+
+
+
+
+
+3. Shortest Substring Match
+
+Following syntax deletes the shortest match of $substring from front
+of $string
+
+${string#substring}
+
+Following syntax deletes the shortest match of $substring from back of
+$string
+
+${string%substring}
+
+Following sample shell script explains the above two shortest
+substring match concepts.
+
+$ cat shortest.sh
+#! /bin/bash
+
+filename="bash.string.txt"
+
+echo ${filename#*.}
+echo ${filename%.*}
+
+$ ./shortest.sh
+After deletion of shortest match from front: string.txt
+After deletion of shortest match from back: bash.string
+
+In the first echo statement substring ‘*.’ matches the characters and
+a dot, and # strips from the front of the string, so it strips the
+substring “bash.” from the variable called filename. In second echo
+statement substring ‘.*’ matches the substring starts with dot, and %
+strips from back of the string, so it deletes the substring ‘.txt’
+
+-----------------------
+4. Longest Substring Match
+
+Following syntax deletes the longest match of $substring from front of $string
+
+${string##substring}
+
+Following syntax deletes the longest match of $substring from back of $string
+
+${string%%substring}
+
+Following sample shell script explains the above two longest substring
+match concepts.
+
+$ cat longest.sh
+#! /bin/bash
+
+filename="bash.string.txt"
+
+echo "After deletion of longest match from front:" ${filename##*.}
+echo "After deletion of longest match from back:" ${filename%%.*}
+
+$ ./longest.sh
+After deletion of longest match from front: txt
+After deletion of longest match from back: bash
+
+In the above example, ##*. strips longest match for ‘*.’ which matches
+“bash.string.” so after striping this, it prints the remaining
+txt. And %%.* strips the longest match for .* from back which matches
+“.string.txt”, after striping it returns “bash”.
+
+----------------------------------------------
+5. Find and Replace String Values inside Bash Shell Script
+----------------------------------------------
+Replace only first match
+
+${string/pattern/replacement}
+
+It matches the pattern in the variable $string, and replace only the
+first match of the pattern with the replacement.
+
+$ cat firstmatch.sh
+#! /bin/bash
+
+filename="bash.string.txt"
+
+echo "After Replacement:" ${filename/str*./operations.}
+
+$ ./firstmatch.sh
+After Replacement: bash.operations.txt
+
+----------------------------------------------
+Replace all the matches
+
+${string//pattern/replacement}
+
+It replaces all the matches of pattern with replacement.
+
+$ cat allmatch.sh
+#! /bin/bash
+
+filename="Path of the bash is /bin/bash"
+
+echo "After Replacement:" ${filename//bash/sh}
+
+$ ./allmatch.sh
+After Replacement: Path of the sh is /bin/sh
+
+Taking about find and replace, refer to our earlier articles – sed
+substitute examples and Vim find and replace.  
+
+---------------------------------------------- 
+Replace beginning and end
+
+${string/#pattern/replacement}
+
+Following syntax replaces with the replacement string, only when the
+pattern matches beginning of the $string.
+
+${string/%pattern/replacement}
+
+Following syntax replaces with the replacement string, only when the
+pattern matches at the end of the given $string.
+
+$ cat posmatch.sh
+#! /bin/bash
+
+filename="/root/admin/monitoring/process.sh"
+
+echo "Replaced at the beginning:" ${filename/#\/root/\/tmp}
+echo "Replaced at the end": ${filename/%.*/.ksh}
+
+$ ./posmatch.sh
+Replaced at the beginning: /tmp/admin/monitoring/process.sh
+Replaced at the end: /root/admin/monitoring/process.ksh
+
+-----------------------------------------------------------------------------
+
+Redirecting stdin/stdout/stderr
+
+-----------------------------------------------------------------------------
+
+# send output from entire script to file
+#exec 1> /tmp/1.log
+
+# send output from entire script to file. also send stderr to stdout
+# so now both go to log file
+#exec 1> /tmp/1.log 2>&1
+
+# Redirect stdout ( > ) into a named pipe ( >() ) running "tee"
+# Without 2>&1, only stdout would be captured - i.e. your
+# log file would not contain any error messages.
+
+exec > >(tee /tmp/1.log >> /tmp/2.log) 2>&1
+
+# this can be separate line or on prev line
+#exec 2>&1
+
+date
+echo "log a msg"
+foo # invalid command
+
+# run this script many times and 1.log will contain only date/echo
+# output. 2.log will contain a history of all outputs.
+-----------------------------------------------------------------------------
+
+# pass array as args to func
+# http://stackoverflow.com/questions/1063347/passing-arrays-as-parameters-in-bash
+
+# but when array is huge and debug output is turned on slows down the
+# script big time.  even w/o -x might be inefficient.
+
+function george_get_ssn_mac_index()
+{
+    local ssn="$1"
+    shift
+    local macs=("${@}")
+    echo "${macs[($ssn * 8) + 7]}"
+}
+testmac=$(george_get_ssn_mac $SSN $MACS[@])
+
+
+-----------------------------------------------------------------------------
