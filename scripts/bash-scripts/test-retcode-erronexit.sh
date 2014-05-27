@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 function return_val()
 {
     if [[ $1 -eq 1 ]]; then
