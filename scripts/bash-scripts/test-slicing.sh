@@ -14,7 +14,7 @@ last=$(($len - 1))
 PWD=$(readlink -f $(dirname $0))
 echo "PWD $PWD"
 
-echo "array=[${array[@]}]"
+echo "whole array=[${array[@]}]"
 echo "array[0]=[${array[0]}]"
 echo "array[1]=[${array[1]}]"
 echo "..."
