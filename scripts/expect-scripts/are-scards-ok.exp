@@ -1,0 +1,214 @@
+#!/usr/bin/env expect
+
+
+set EXIT_SUCCESS 0
+set EXIT_FAILURE 3
+set EXIT_SSH_PERMISSION_DENIED 4
+set EXIT_SSH_CONN_TIMED_OUT 5
+set EXIT_EXP_TIMEOUT 6
+set EXIT_SM_ERROR_GENERIC 7
+set EXIT_SM_ERROR_SYNTAX 8
+set EXIT_SM_ERROR_INVALID_VALUE 9
+set EXIT_SM_ERROR_RESOURCE_BUSY 10
+set EXIT_SM_ERROR_INCOMPLETE_COMMAND 11
+set EXIT_SM_ERROR_REMOTE_FILE_NOT_FOUND 12
+set EXIT_SM_ERROR_PERMISSION_DENIED 13
+set EXIT_SM_ERROR_FAILURE_EVENT 14
+
+namespace eval configuration {}
+namespace eval system {}
+
+# TODO you need to fill in these with valid values
+set configuration::user_name 
+set configuration::password  
+
+set system::ssh /usr/bin/ssh
+
+#set timeout 600
+set timeout 30
+exp_internal 0
+log_user 0
+
+# debug print
+proc dprint { level msg } {
+    if [catch {set scope [lindex [info level -1] 0]} ignore] {
+        set scope "global"
+    }
+    if { $main::options(debug_level) >= $level && !$main::flags(quiet) } {
+        send_user "\[$level\]\[$scope\]$msg\n"
+    }
+}
+
+# puts stdout
+proc puts_out { output } {
+    send_user "$output\n"
+}
+
+############################################################
+## chassis
+############################################################
+
+namespace eval chassis {}
+
+proc chassis::enable { } {
+    send "enable\r"
+    expect {
+        -re ".*# " {
+            puts -nonewline $expect_out(buffer)
+        } -re . {
+            puts -nonewline $expect_out(buffer)
+            exp_continue
+        } timeout {
+            exit $EXIT_EXP_TIMEOUT
+        } eof {
+            exit $EXIT_FAILURE
+        }
+
+    }
+}
+
+proc chassis::exit { } {
+    send "exit\r"
+    expect {
+        -re ".*# " {
+            puts -nonewline $expect_out(buffer)
+        } -re . {
+            exp_continue
+        } timeout {
+            exit $EXIT_EXP_TIMEOUT
+        } eof {
+            puts "=== eof ==="
+            puts $expect_out(buffer)
+        }
+        -re ".+\r" {
+            puts $expect_out(buffer)
+        }
+        -re ".+\n" {
+            puts -nonewline $expect_out(buffer)
+        }
+    }
+}
+
+proc chassis::show_storage_scard { } {
+    send "show storage scard\r"
+    expect {
+        -re ".*# " {
+            puts -nonewline $expect_out(buffer)
+        } -re . {
+            puts -nonewline $expect_out(buffer)
+            exp_continue
+        } timeout {
+            exit $EXIT_EXP_TIMEOUT
+        } eof {
+            exit $EXIT_FAILURE
+        }
+    }
+}
+
+############################################################
+## ssh
+############################################################
+
+namespace eval ssh {}
+
+proc ssh::connect { dst } {
+    global opts expect_out spawn_id
+    spawn $system::ssh admin@$dst
+    puts " $system::ssh $dst"
+    while 1 {
+        expect {
+            "assword:" {
+                send "$configuration::password\r"
+            }
+            "\nAre you sure you want to continue connecting (yes/no)? " {
+                puts -nonewline $expect_out(buffer)
+                send "yes\r"
+                puts -nonewline "yes\r"
+            } "\nPermission denied, please try again." {
+                puts -nonewline $expect_out(buffer)
+                close
+                error "ssh::exec_cmd: incorrect user: $configuration::user_name or password: $configuration::password"
+            }
+            -re ".*> " {
+                puts -nonewline $expect_out(buffer)
+                break
+            }
+            timeout {
+                error "ssh::connect: timed out"
+            }
+            eof {
+                puts "=== eof ==="
+                puts $expect_out(buffer)
+                break
+            }
+            -re "..." {
+                puts -nonewline $expect_out(buffer)
+            }
+            -re ".+\r" {
+                puts $expect_out(buffer)
+            }
+            -re ".+\n" {
+                puts -nonewline $expect_out(buffer)
+            }
+        }
+    }
+}
+
+
+proc ssh::remove_key { filename line } {
+    dprint 2 "remove_key: filename: $filename, line: $line"
+    # exec ssh-keygen -r
+    exec $system::cp -f $filename [set filename].bak
+    exec $system::sed "[set line]D" $filename > [set filename].sed
+    exec $system::mv [set filename].sed $filename
+    exec $system::chmod 600 [set filename]
+}
+
+
+############################################################
+## main::main
+############################################################
+
+namespace eval main {}
+
+# options and flags processing
+array set main::options "
+    debug_level                 3
+"
+
+array set main::flags "
+    help                0
+    version             0
+    quiet               0
+"
+
+set main::version_string "0.1"
+
+set main::help_msg \
+    {Usage:  [OPTIONS] TARGET_MX_IPADDR
+        OPTIONS:
+        --help                            print this message
+        --version                         print version information
+        --quiet                           suppress status messages
+        --debug_level=LEVEL               debug level, LEVEL in [0, 4]
+    }
+
+proc main::main { argv } {
+    set dst [lindex $argv 0]
+    #set src [lindex $argv 0]
+
+    if ![string length $dst] {
+        puts_out "ERROR main: must specify mxcard ip"
+        return 1
+    }
+    global opts expect_out spawn_id
+    ssh::connect "$dst"
+    chassis::enable
+    chassis::show_storage_scard
+    chassis::exit
+    return 0
+}
+
+# invoke main and exit
+set exit_code [main::main $argv]
+exit $exit_code
