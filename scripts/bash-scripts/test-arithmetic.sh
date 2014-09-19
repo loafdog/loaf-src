@@ -36,6 +36,20 @@ function arithmetic_exits_with_error()
 
 }
 
+function array_math()
+{
+    local a=(1 2 3)
+    local b=(4 5 6)
+    local lena=${#a[@]}
+    local lenb=${#b[@]}
+    local total
+    # don't forget the $ before ((
+    #total=(( ${#a[@]} + ${#b[@]} ))
+    total=$(( ${#a[@]} + ${#b[@]} ))
+    echo "a=$lena b=$lenb total=$total"
+}
+
 bar
 foo
 arithmetic_exits_with_error
+array_math
