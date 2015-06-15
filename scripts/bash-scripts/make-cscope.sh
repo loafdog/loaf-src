@@ -26,7 +26,15 @@ PRUNE_FILES='
         -name *.gz -prune -o
         -name *.tar.gz -prune -o
         -name *.pyc -prune -o
-        -name *.d -prune'
+        -name cscope.* -prune -o
+        -path */src/main/java/com/terremark/george/service/task/TaskMessages.java -prune -o
+        -path */target -prune -o
+        -path */orc.log -prune'
+
+#        -name *.d -prune'
+
+# possible prunes
+# resources/node/node_modules/versionator/node_modules/lodash/vendor/benchmark.js
 
 INCLUDE_FILES='
         -name *.[cshSylxi] -o
@@ -51,8 +59,10 @@ INCLUDE_FILES='
         -name *.ks -o
         -name *.exp -o
         -name *.post -o
-        -name *.txt'
+        -name *.txt
+         '
 
+INCLUDE_FILES=' -type f '
 
 # add all files that match find filter starting at BASE_DIR.
 
