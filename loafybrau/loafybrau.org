@@ -1,0 +1,49 @@
+
+* British Nut Brown Ale
+
+** http://www.homebrewtalk.com/showthread.php?t=30187
+
+** Partial Mash
+5 lbs 3.8 oz Pale Liquid Extract (8.0 SRM)
+2 lbs Pale Malt (2 Row) US (2.0 SRM)
+13.2 oz Caramel/Crystal Malt - 60L (60.0 SRM)
+14.2 oz Oats, Flaked (1.0 SRM)
+6.6 oz Victory Malt (25.0 SRM)
+3.3 oz Chocolate Malt (350.0 SRM)
+
+
+** Recipe Type: All Grain
+Yeast: Nottingham   
+Batch Size (Gallons): 5.5   
+Original Gravity: 1.054   
+Final Gravity: 1.012   
+IBU: 22.7   
+Boiling Time (Minutes): 60   
+Color: 16.3 SRM   
+Primary Fermentation (# of Days & Temp): 7   
+Secondary Fermentation (# of Days & Temp): 14   
+
+If you like nut browns, you'll love this one!
+
+Ingredients
+Amount Item Type % or IBU 
+9.00 lb Pale Malt (2 Row) US (2.0 SRM) Grain 76.6 % 
+1.00 lb Caramel/Crystal Malt - 60L (60.0 SRM) Grain 8.5 % 
+1.00 lb Oats, Flaked (1.0 SRM) Grain 8.5 % 
+0.50 lb Victory Malt (25.0 SRM) Grain 4.3 % 
+0.25 lb Chocolate Malt (350.0 SRM) Grain 2.1 % 
+1.00 oz Fuggles [4.50%] (60 min) Hops 14.7 IBU 
+1.00 oz Goldings, East Kent [5.00%] (15 min) Hops 8.1 IBU 
+1 Pkgs Nottingham (Danstar #-) Yeast-Ale 
+
+Mash Profile 
+Name: Single Infusion, Medium Body, Batch Sparge 
+Mash Grain Weight: 11.75 lb 
+Grain Temperature: 72.0 F 
+Sparge Temperature: 168.0 F 
+Sparge Water: 4.21 gal 
+
+Name Description Step Temp Step Time 
+Mash In Add 14.69 qt of water at 165.9 F 154.0 F 60 min
+
+Based on 70% brewhouse efficiency
