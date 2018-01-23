@@ -502,216 +502,6 @@ class InputFile(object):
     def dump_raw_lines(self):
         return self.lines
 
-class DcuInputFile(InputFile):
-    """InputFile from dcu txn file. This class knows how to parse a line and
-turn it into a txn.
-
-    """
-    src='DCU'
-    def parse(self):
-        pass
-    
-    def old_parse(self):
-        if not self.line or self.line == '\n':
-            # print 'Warn: line is empty:[{0}]'.format(self.line)
-            return None
-
-        parts = self.line.rstrip('\n').replace('"','').split(',')
-        if len(parts) < 1:
-            print 'Warn: line is invalid parts={0}:[{1}]'.format(len(parts), self.line)
-            return None
-        
-        if len(parts) < 7:
-            print 'Warn: line is invalid parts={0}:[{1}]'.format(len(parts), self.line)
-            return None
-
-        if re.match('Transaction ', self.line):
-            return None
-
-        #print 'DEBUG: parts=[{0}]:\n  line=[{1}]'.format(parts, self.line)
-        idnum = parts[0]
-        date = parts[1]
-        ttype = parts[2]
-        info = parts[3]
-        #blank = parts[5]
-        balance = parts[6]
-        check = parts[7]
-
-        # print "DEBUG: parts 4[{0}] 5[{1}]".format(parts[4], parts[5])
-        try:
-            amt = float(parts[4])
-        except ValueError:
-            try:
-                amt = float(parts[5])
-            except ValueError:
-                raise ValueError('No amt found in line parts: {0}'.format(parts))
-
-        try:
-            txn = BankTxn(idnum, date, ttype, info, amt, balance, check, self.src)
-            return txn
-        except ValueError:
-            print 'ValueError: {0}'.format(parts[4])
-            exit
-        return None
-
-class FidelityInputFile(InputFile):
-    src='FID'
-    def parse(self):
-        pass
-    def old_parse(self):
-        if not self.line or self.line == '\n':
-            # print 'Warn: line is empty:[{0}]'.format(self.line)
-            return None
-
-        parts = self.line.rstrip('\n').replace('"','').split(',')
-        if len(parts) < 1:
-            print 'Warn: line is invalid parts={0}:[{1}]'.format(len(parts), self.line)
-            return None
-        
-        if len(parts) < 5:
-            print 'Warn: line is invalid parts={0}:[{1}]'.format(len(parts), self.line)
-            return None
-
-        if re.match('Transaction ', self.line):
-            return None
-
-        date = parts[0]
-        ttype = parts[1]
-        info = parts[2]
-        weird_num = parts[3]
-        #weird_num = parts[4]
-
-        # print "parts [{0}] [{1}]".format(parts[4], parts[5])
-        try:
-            amt = float(parts[4])
-        except ValueError:
-            raise ValueError('No amt found in line parts: {0}'.format(parts))
-        except IndexError:
-            print self.line
-            print parts
-            exit
-        try:
-            #txn = FidTxn(date, ttype, info, amt)
-            txn = CcTxn(date, ttype, info, amt, self.src)
-            return txn
-        except ValueError:
-            print 'ValueError: {0}'.format(parts[4])
-            exit
-        return None
-
-class CapitalOneInputFile(InputFile):
-    src='CAP'
-
-    def parse(self):
-        pass
-
-    def old_parse(self):
-        if not self.line or self.line == '\n':
-            # print 'Warn: line is empty:[{0}]'.format(self.line)
-            return None
-
-        parts = self.line.rstrip('\n').replace('"','').split(',')
-        if len(parts) < 1:
-            print 'Warn: line is invalid parts={0}:[{1}]'.format(len(parts), self.line)
-            return None
-        
-        if len(parts) < 5:
-            print 'Warn: line is invalid parts={0}:[{1}]'.format(len(parts), self.line)
-            return None
-
-        if re.match('Transaction ', self.line):
-            return None
-
-        # capone doesn't have txn type in file. 
-        ttype = ''
-        date = parts[self.date_idx]
-        info = parts[self.desc_idx]
-
-        # capone attempts to sort your txns into categories
-        # capone_category = parts[3+off]
-
-        # debit is 4 or 6 should be pos
-        # credit is 5 or 7 should be neg
-        # print parts
-        # print "parts [{0}] [{1}]".format(parts[4], parts[5])
-        amt = None
-        if parts[self.debit_idx] != '':
-            try:
-                amt = float(parts[self.debit_idx])
-                if amt > 0: amt*=-1
-            except ValueError:
-                raise ValueError('No amt found in line parts: {0}'.format(parts))
-        elif parts[self.credit_idx] != '':
-            try:
-                amt = float(parts[self.credit_idx])
-                #if amt > 0: amt*=-1
-            except ValueError:
-                raise ValueError('No amt found in line parts: {0}'.format(parts))
-        else:
-            print >>sys.stderr, 'No amt found in line parts: debit_idx={0} credit_idx={1} {3}'.format(self.debit_idx, self.credit_idx, parts)
-            exit -1
-
-        txn = CcTxn(date, ttype, info, amt, self.src)
-        return txn
-
-    def parse_old(self):
-        if not self.line or self.line == '\n':
-            # print 'Warn: line is empty:[{0}]'.format(self.line)
-            return None
-
-        parts = self.line.rstrip('\n').replace('"','').split(',')
-        if len(parts) < 1:
-            print 'Warn: line is invalid parts={0}:[{1}]'.format(len(parts), self.line)
-            return None
-        
-        if len(parts) < 5:
-            print 'Warn: line is invalid parts={0}:[{1}]'.format(len(parts), self.line)
-            return None
-
-        if re.match('Transaction ', self.line):
-            return None
-
-        # capone doesn't have txn type in file. 
-        ttype = ''
-
-        if 'POSTED' == parts[0]:
-            off = 2
-        else:
-            off = 0
-
-        date = parts[0+off]
-        info = parts[2+off]
-        # capone attempts to sort your txns into categories
-        capone_category = parts[3+off]
-
-        # debit is 4 or 6 should be pos
-        # credit is 5 or 7 should be neg
-        # print parts
-        # print "parts [{0}] [{1}]".format(parts[4], parts[5])
-        amt = None
-        for i in [3,4,5]:
-            try:
-                amt = float(parts[i+off])
-            except ValueError:
-                continue
-            break
-        if not amt:
-            raise ValueError('No amt found in line parts: {0}'.format(parts))
-        # try:
-        #     amt = float(parts[4+off])
-        # except ValueError:
-        #     try:
-        #         amt = -float(parts[5+off])
-        #     except ValueError:
-        #         raise ValueError('No amt found in line parts: {0}'.format(parts))
-        # except IndexError:
-        #     print self.line
-        #     print parts
-        #     exit
-
-        txn = CcTxn(date, ttype, info, amt, self.src)
-        return txn
-
 class Institution(object):
     """
     A bank or credit card company
@@ -785,14 +575,6 @@ class Institution(object):
 class Dcu(Institution):
     def __init__(self, name, input_dir, txn_files, check_file, deposit_file):
         Institution.__init__(self, name, 'DCU', input_dir, txn_files, check_file, deposit_file)
-        #self.lines = DcuInputFile(input_dir, txn_file)
-        # self.lines = InputFile(input_dir, txn_file, 'DCU')
-        # self.name = name
-        # self.txn_file = txn_file
-        
-    # def add_line(self, line):
-    #     pass
-        #self.lines.append(DcuLine(line))
 
     def update_deposit_file(self):
         dep_txns = {}
@@ -867,27 +649,16 @@ class Dcu(Institution):
 class Fidelity(Institution):
     def __init__(self, name, input_dir, txn_files, check_file, deposit_file):
         Institution.__init__(self,name, 'FID', input_dir, txn_files, check_file, deposit_file)
-        # self.lines = FidelityInputFile(input_dir, txn_file)
-        # self.lines = InputFile(input_dir, txn_file, 'FID')
-
-    # def add_line(self, line):
-    #     pass
-        #self.lines.append(FidelityLine(line))
 
 class CapitalOne(Institution):
     def __init__(self, name, input_dir, txn_files, check_file, deposit_file):
         Institution.__init__(self, name, 'CAP', input_dir, txn_files, check_file, deposit_file)
-        # self.lines = CapitalOneInputFile(input_dir, txn_file)
-        # self.lines = InputFile(input_dir, txn_file, 'CAP')
-        
-    # def add_line(self, line):
-    #     pass
-        # self.lines.append(CapitalOneInputFile(line))
 
 class Chart(object):
 
-    def __init__(self, reports):
+    def __init__(self, reports, output_dir):
         self.reports = reports
+        self.output_dir = output_dir
 
     def draw(self):
 
@@ -902,11 +673,13 @@ class Chart(object):
             chart.title = '{0} {1}'.format(r.title, r.year)
             chart.x_labels = r.names
             chart.add(r.year, r.series)
-            chart.render_to_file('{0}_{1}.svg'.format(r.title, r.year))
+            chart_file = os.path.join(self.output_dir, '{0}_{1}.svg'.format(r.title, r.year))
+            chart.render_to_file(chart_file)
 
             ch.add(r.year, r.series)
-            
-        ch.render_to_file('{0}_all.svg'.format(ch.title))
+
+        all_chart_file = os.path.join(self.output_dir, '{0}_all.svg'.format(ch.title))
+        ch.render_to_file(all_chart_file)
         
 class Report(object):
     """
@@ -929,7 +702,6 @@ class Report(object):
             total = kwargs['amt']
         elif name in self.categories.cats:
             total = self.categories.cats[name].total
-            #print '[{0}] -> [{1}]'.format(name, self.categories.cats[name])
         elif name in self.categories.cat_totals:
             total = self.categories.cat_totals[name].total
         else:
@@ -1090,55 +862,56 @@ class IncomeReport(Report):
 
 
 conf = {
-    # 'cats': '/Users/mwiczynski/data/private/cashflow_data/2016/cashflow.cat',
-
-    # TODO should i add a years key to group all years? yes if i add more globals like cat
-    
-    '2016': {
-        'input_dir': '/Users/mwiczynski/data/private/cashflow_data/2016',
-        'insts': {
-            'DCU': {
-                'txn_files': ['dcu-checking-2016.csv'],
-                'check_file': 'dcu-checks-2016.json',
-                'deposit_file': 'dcu-deposits-2016.json'
-            },
-            'Fidelity': {
-                'txn_files': ['fid-2016.csv']
-            },
-            'CapOne': {
-                'txn_files': ['capone-credit-2016.csv']
+    'cats': '/Users/mwiczynski/data/private/cashflow_data/2016/cashflow.cat',
+    'report_dir': '/Users/mwiczynski/data/private/cashflow_data/reports',
+    'chart_dir': '/Users/mwiczynski/data/private/cashflow_data/charts',
+    'years': {
+        '2016': {
+            'input_dir': '/Users/mwiczynski/data/private/cashflow_data/2016',
+            'insts': {
+                'DCU': {
+                    'txn_files': ['dcu-checking-2016.csv'],
+                    'check_file': 'dcu-checks-2016.json',
+                    'deposit_file': 'dcu-deposits-2016.json'
+                },
+                'Fidelity': {
+                    'txn_files': ['fid-2016.csv']
+                },
+                'CapOne': {
+                    'txn_files': ['capone-credit-2016.csv']
+                }
             }
-        }
-    },
-    '2015': {
-        'input_dir': '/Users/mwiczynski/data/private/cashflow_data/2015',
-        'insts': {
-            'DCU': {
-                'txn_files': ['dcu-checking-2015.csv'],
-                'check_file': 'dcu-checks-2015.json',
-                'deposit_file': 'dcu-deposits-2015.json'
-            },
-            'Fidelity': {
-                'txn_files': ['fid-2015.csv']
-            },
-            'CapOne': {
-                'txn_files': ['capone-credit-1-2015.csv', 'capone-credit-2-2015.csv']
+        },
+        '2015': {
+            'input_dir': '/Users/mwiczynski/data/private/cashflow_data/2015',
+            'insts': {
+                'DCU': {
+                    'txn_files': ['dcu-checking-2015.csv'],
+                    'check_file': 'dcu-checks-2015.json',
+                    'deposit_file': 'dcu-deposits-2015.json'
+                },
+                'Fidelity': {
+                    'txn_files': ['fid-2015.csv']
+                },
+                'CapOne': {
+                    'txn_files': ['capone-credit-1-2015.csv', 'capone-credit-2-2015.csv']
+                }
             }
-        }
-    },
-    '2014': {
-        'input_dir': '/Users/mwiczynski/data/private/cashflow_data/2014',
-        'insts': {
-            'DCU': {
-                'txn_files': ['dcu-checking-2014.csv'],
-                'check_file': 'dcu-checks-2014.json',
-                'deposit_file': 'dcu-deposits-2014.json'
-            },
-            'Fidelity': {
-                'txn_files': ['fid-2014.csv']
-            },
-            'CapOne': {
-                'txn_files': ['capone-2014.csv']
+        },
+        '2014': {
+            'input_dir': '/Users/mwiczynski/data/private/cashflow_data/2014',
+            'insts': {
+                'DCU': {
+                    'txn_files': ['dcu-checking-2014.csv'],
+                    'check_file': 'dcu-checks-2014.json',
+                    'deposit_file': 'dcu-deposits-2014.json'
+                },
+                'Fidelity': {
+                    'txn_files': ['fid-2014.csv']
+                },
+                'CapOne': {
+                    'txn_files': ['capone-2014.csv']
+                }
             }
         }
     }
@@ -1146,13 +919,14 @@ conf = {
 
 def doit(conf):
     reports = {}
-    for year in conf:
+    years = conf['years']
+    for year in years:
         print '='*80
         print year
         banks = []
-        input_dir = conf[year]['input_dir']
+        input_dir = years[year]['input_dir']
 
-        insts = conf[year]['insts']
+        insts = years[year]['insts']
         for ikey in insts:
             if 'check_file' in insts[ikey]:
                 cfile = insts[ikey]['check_file']
@@ -1196,17 +970,22 @@ def doit(conf):
             i.update_check_file()
             i.update_deposit_file()
 
-        # TODO use global cats from conf unless cat exists for this year.
-        cats = Categories('/Users/mwiczynski/data/private/cashflow_data/2016/cashflow.cat')
+        cats = Categories(conf['cats'])
         cats.read_file()
 
         for i in banks:
             i.match_txns(cats)
 
-        report_file = os.path.join(input_dir, 'report_{0}.txt'.format(year))
+        # Generate reports
+        if not os.path.exists(conf['report_dir']):
+            os.makedirs(conf['report_dir'])
+        if not os.path.exists(conf['chart_dir']):
+            os.makedirs(conf['chart_dir'])
+
+        report_file = os.path.join(conf['report_dir'], 'report_{0}.txt'.format(year))
         if os.path.isfile(report_file):
             shutil.copy2(report_file, "{0}.bak".format(report_file))
-
+            
         freport = open(report_file, 'w')
 
         cats.print_txns(details=True, rfd=freport)
@@ -1214,6 +993,7 @@ def doit(conf):
 
         # r = FmfrrReport(year, cats, freport)
         # reports.append(r)
+
         r = FixedReport(year, cats, freport)
         if r.title not in reports:
             reports[r.title] = []
@@ -1231,15 +1011,14 @@ def doit(conf):
 
         for ct in sorted(cats.cat_totals):
             r = AllSubCatOutcomeReport(year, cats, freport, cats.cat_totals[ct])
-            #r = AllSubCatOutcomeReport(year, cats, freport, ct)
             if r.title not in reports:
                 reports[r.title] = []
             reports[r.title].append(r)
-        
+
         for key in reports.iterkeys():
             for r in reports[key]:
                 r.run()
-            chart = Chart(reports[key])
+            chart = Chart(reports[key], conf['chart_dir'])
             chart.draw()
                 
 
