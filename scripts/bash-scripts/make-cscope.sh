@@ -16,20 +16,24 @@ BASE_DIR=$PWD
 PRUNE_FILES='
         -name *~ -prune -o
         -name .git* -prune -o
+        -name .svn -prune -o
         -name *.o -prune -o
         -name *.gif -prune -o
         -name *.jpg -prune -o
         -name *.png -prune -o
+        -name *.svn -prune -o
+        -name *.ttf -prune -o
+        -name *.woff* -prune -o
         -name *.jar -prune -o
         -name *.css -prune -o
         -name *.tgz -prune -o
+        -name *.zip -prune -o
         -name *.gz -prune -o
         -name *.tar.gz -prune -o
         -name *.pyc -prune -o
-        -name cscope.* -prune -o
-        -path */src/main/java/com/terremark/george/service/task/TaskMessages.java -prune -o
-        -path */target -prune -o
-        -path */orc.log -prune'
+        -name cscope.* -prune' 
+
+#        -path */target -prune
 
 #        -name *.d -prune'
 
@@ -59,6 +63,7 @@ INCLUDE_FILES='
         -name *.ks -o
         -name *.exp -o
         -name *.post -o
+        -name *.php -o
         -name *.txt
          '
 
